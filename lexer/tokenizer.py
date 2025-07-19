@@ -1,4 +1,5 @@
 import re
+from errors.exceptions import LexerError
 
 TOKEN_SPEC = [
     ('MULTILINE_COMMENT', r'/\*[\s\S]*?\*/'),
@@ -70,6 +71,8 @@ class Token:
 def tokenize(code):
     tokens = []
     pos = 0
+    lines = code.split('\n')
+    
     while pos < len(code):
         match = None
         for token_name, token_regex in TOKEN_SPEC:
@@ -81,5 +84,23 @@ def tokenize(code):
                 pos = match.end(0)
                 break
         if not match:
-            raise SyntaxError(f"Caractere desconhecido em posição {pos}")
+            # Encontrar a linha onde ocorreu o erro
+            line_num = code[:pos].count('\n')
+            line_start = code.rfind('\n', 0, pos) + 1
+            line_end = code.find('\n', pos)
+            if line_end == -1:
+                line_end = len(code)
+            
+            source_line = code[line_start:line_end]
+            char_in_line = pos - line_start
+            
+            # Criar contexto visual do erro
+            error_pointer = ' ' * char_in_line + '^'
+            context_info = f"Linha {line_num + 1}, coluna {char_in_line + 1}\n{source_line}\n{error_pointer}"
+            
+            raise LexerError(
+                char=code[pos] if pos < len(code) else 'EOF',
+                position=pos,
+                source_line=context_info
+            )
     return tokens

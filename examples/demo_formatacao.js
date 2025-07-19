@@ -11,7 +11,7 @@ let ativo = true; // Status do usuário
    a área de um retângulo
 */
 function calcularArea(largura, altura) {
-    return largura * altura; // Multiplica largura pela altura
+  return largura * altura; // Multiplica largura pela altura
 }
 
 // Testando a função
@@ -20,7 +20,7 @@ console.log(resultado);
 
 // Segunda função
 function saudar(nome) {
-    console.log("Olá!");
+  console.log("Olá!");
 }
 
 saudar(nome); // Chamando função de saudação

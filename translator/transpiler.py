@@ -1,4 +1,5 @@
 from ast_nodes.nodes import Literal, LambdaFunction, FunctionDeclaration
+from errors.exceptions import TranspilerError
 
 
 class Transpiler:
@@ -18,7 +19,17 @@ class Transpiler:
         return visitor(node)
 
     def generic_visit(self, node):
-        raise Exception(f"No visit_{node.__class__.__name__} method")
+        node_type = node.__class__.__name__
+        available_nodes = [
+            'Program', 'VariableDeclaration', 'Literal', 'Identifier', 
+            'BinaryOp', 'ConsoleLog', 'IfStatement', 'WhileStatement',
+            'FunctionDeclaration', 'Comment', 'InlineComment'
+        ]
+        
+        message = f"Nó '{node_type}' não tem método de transpilação implementado"
+        message += f". Nós suportados: {', '.join(available_nodes)}"
+        
+        raise TranspilerError(node_type, message)
 
     def visit_Program(self, node):
         #code_lines = [self.visit(s) for s in node.statements]

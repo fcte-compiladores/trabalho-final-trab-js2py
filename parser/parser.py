@@ -1,4 +1,5 @@
 from lexer.tokenizer import tokenize
+from errors.exceptions import ParserError
 from ast_nodes.nodes import (
     Program, VariableDeclaration, Assignment, Literal, Identifier,
     BinaryOp, UnaryOp, ConsoleLog, IfStatement, WhileStatement,
@@ -24,7 +25,19 @@ class Parser:
             self.pos += 1
             return token
         else:
-            raise SyntaxError(f"Esperado {token_type}, encontrado {token}")
+            # Informações contextuais mais detalhadas
+            context = f"Tentando processar token na posição {self.pos}"
+            if token:
+                context += f". Token atual: {token.type} = '{token.value}'"
+            else:
+                context += ". Fim do arquivo inesperado"
+            
+            raise ParserError(
+                expected=token_type,
+                found=token.type if token else "EOF",
+                position=self.pos,
+                context=context
+            )
 
     def parse_program(self):
         statements = []
@@ -75,7 +88,17 @@ class Parser:
         elif token.type == 'FOR':
             return self.parse_for_statement()
         else:
-            raise SyntaxError(f"Token inesperado: {token}")
+            # Melhor descrição de tokens inesperados
+            available_tokens = ['VAR', 'LET', 'CONST', 'FUNCTION', 'IF', 'WHILE', 'FOR', 'RETURN', 'CLASS']
+            context = f"Token '{token.type}' não é válido no início de uma declaração"
+            context += f". Tokens válidos: {', '.join(available_tokens)}"
+            
+            raise ParserError(
+                expected="declaração válida",
+                found=token.type,
+                position=self.pos,
+                context=context
+            )
 
     def parse_comment(self):
         token = self.eat('COMMENT')
