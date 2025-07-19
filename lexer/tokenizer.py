@@ -1,6 +1,7 @@
 import re
 
 TOKEN_SPEC = [
+    ('MULTILINE_COMMENT', r'/\*[\s\S]*?\*/'),
     ('COMMENT', r'//.*'),
     ('NUMBER', r'\d+(\.\d+)?'),
     ('STRING', r'(["\'])(?:\\.|[^\\])*?\1'),
