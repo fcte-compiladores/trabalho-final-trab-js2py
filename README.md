@@ -88,6 +88,13 @@ Para executar os testes do projeto:
 uv run pytest
 ```
 
+### 3.3 Como rodar os testes:
+Para executar os testes com cobertura, use o comando:
+
+```bash
+pytest --cov=. --cov-report=term-missing
+```
+
 ## 4. ⚙️ Exemplos
 
 O projeto contém uma pasta `examples/` com diversos arquivos JavaScript utilizados para validar as funcionalidades do compilador. Os exemplos abrangem diferentes níveis de complexidade e cobrem vários recursos da linguagem, garantindo a demonstração prática das capacidades do transpilador.
