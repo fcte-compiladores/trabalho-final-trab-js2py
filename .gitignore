@@ -22,7 +22,6 @@ coverage.xml
 
 # UV
 .uv-cache/
-# Note: uv.lock should be committed to ensure reproducible builds
 
 # IDE
 .vscode/

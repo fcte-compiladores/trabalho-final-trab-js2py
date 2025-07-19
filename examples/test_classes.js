@@ -1,3 +1,4 @@
+// Teste básico de classe JavaScript
 class Pessoa {
   constructor(nome, idade) {
     console.log("Criando pessoa...");
@@ -12,14 +13,17 @@ class Pessoa {
   }
 }
 
+// Classe vazia para teste
 class Vazia {}
 
+// Classe só com constructor
 class SoConstructor {
   constructor() {
     console.log("Só constructor");
   }
 }
 
+// Classe só com métodos
 class SoMetodos {
   metodo1() {
     return "teste";
