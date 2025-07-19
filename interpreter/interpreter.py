@@ -210,7 +210,12 @@ class Interpreter:
             self.visit(statement)
 
     def visit_Comment(self, node):
+        # Comentários são ignorados durante a interpretação
         pass
+
+    def visit_InlineComment(self, node):
+        # Executa apenas o statement, ignora o comentário
+        return self.visit(node.statement)
 
     def visit_WhileStatement(self, node):
         while self.visit(node.condition):

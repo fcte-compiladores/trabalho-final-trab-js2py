@@ -188,7 +188,23 @@ class Transpiler:
         return f"{loop_header}\n{self._indent(body)}"
 
     def visit_Comment(self, node):
-        return f"# {node.text}"
+        if node.is_multiline:
+            # Para comentários multilinha, usamos docstring tripla
+            lines = node.text.split('\n')
+            if len(lines) == 1:
+                return f"# {node.text}"
+            else:
+                # Formatar como comentário multilinha Python
+                formatted_lines = []
+                for line in lines:
+                    formatted_lines.append(f"# {line.strip()}")
+                return '\n'.join(formatted_lines)
+        else:
+            return f"# {node.text}"
+
+    def visit_InlineComment(self, node):
+        statement_code = self.visit(node.statement)
+        return f"{statement_code}  # {node.comment_text}"
 
     def visit_ClassDeclaration(self, node):
         class_code = f"class {node.name}:"
