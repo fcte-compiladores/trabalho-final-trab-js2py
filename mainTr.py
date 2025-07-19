@@ -17,11 +17,17 @@ def main():
         transpiler = Transpiler(ast)
         python_code = transpiler.transpile()
 
-        print("# Código Python gerado:\n")
+        # Cabeçalho mais elegante
+        print("=" * 60)
+        print("🐍 CÓDIGO PYTHON TRANSPILADO")
+        print("=" * 60)
+        print()
         print(python_code)
+        print()
+        print("=" * 60)
 
     except Exception as e:
-        print(f"Erro: {e}")
+        print(f"❌ Erro: {e}")
 
 if __name__ == "__main__":
     main()

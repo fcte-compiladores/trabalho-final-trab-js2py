@@ -21,13 +21,59 @@ class Transpiler:
         raise Exception(f"No visit_{node.__class__.__name__} method")
 
     def visit_Program(self, node):
-        code_lines = [self.visit(s) for s in node.statements]
-        code = "\n".join(code_lines)
+        #code_lines = [self.visit(s) for s in node.statements]
+        #code = "\n".join(code_lines)
+        #
+        #if 'math.' in code:
+        #    return f"import math\n\n{code}"
+        #else:
+        #    return code
         
-        if 'math.' in code:
-            return f"import math\n\n{code}"
-        else:
-            return code
+        statements = []
+        prev_type = None
+        
+        for i, statement in enumerate(node.statements):
+            current_code = self.visit(statement)
+            current_type = statement.__class__.__name__
+            
+            # Adiciona quebra de linha entre diferentes tipos de declarações
+            if prev_type and self._should_add_spacing(prev_type, current_type):
+                statements.append("")
+            
+            statements.append(current_code)
+            prev_type = current_type
+            
+        return "\n".join(statements)
+
+    def _should_add_spacing(self, prev_type, current_type):
+        """Determina se deve adicionar espaçamento entre tipos de declarações"""
+        spacing_rules = {
+            # Adiciona espaço antes de funções
+            ('VariableDeclaration', 'FunctionDeclaration'),
+            ('ConsoleLog', 'FunctionDeclaration'),
+            ('Comment', 'FunctionDeclaration'),
+            ('InlineComment', 'FunctionDeclaration'),
+            
+            # Adiciona espaço antes de classes
+            ('VariableDeclaration', 'ClassDeclaration'),
+            ('ConsoleLog', 'ClassDeclaration'),
+            ('Comment', 'ClassDeclaration'),
+            
+            # Adiciona espaço após comentários multilinha grandes
+            ('Comment', 'VariableDeclaration'),
+            ('Comment', 'ConsoleLog'),
+            
+            # Adiciona espaço entre grupos de declarações
+            ('FunctionDeclaration', 'VariableDeclaration'),
+            ('FunctionDeclaration', 'ConsoleLog'),
+            ('ClassDeclaration', 'VariableDeclaration'),
+            
+            # Adiciona espaço após blocos inline comments
+            ('InlineComment', 'Comment'),
+            ('InlineComment', 'FunctionDeclaration'),
+        }
+        
+        return (prev_type, current_type) in spacing_rules
 
     def visit_VariableDeclaration(self, node):
         if isinstance(node.value, LambdaFunction):
@@ -70,15 +116,33 @@ class Transpiler:
             '||': 'or'
         }
         
+        # Operações simples que não precisam de parênteses
+        simple_ops = {'+', '-', '*', '/', '%'}
+        
         if node.op in op_map:
             py_op = op_map[node.op]
-            return f"({left} {py_op} {right})"
+            # Comparações e operações lógicas só precisam de parênteses se necessário
+            if self._needs_parentheses(node):
+                return f"({left} {py_op} {right})"
+            else:
+                return f"{left} {py_op} {right}"
 
         if node.op == '+':
+            # Em JavaScript, '+' com qualquer string faz concatenação
+            # Vamos sempre usar str() para garantir concatenação correta
             if self.might_be_string_concatenation(node.left) or self.might_be_string_concatenation(node.right):
-                return f"(str({left}) + str({right}))"
+                return f"str({left}) + str({right})"
         
+        # Para operações aritméticas simples, não usar parênteses desnecessários
+        if node.op in simple_ops:
+            return f"{left} {node.op} {right}"
+            
         return f"({left} {node.op} {right})"
+
+    def _needs_parentheses(self, node):
+        """Determina se uma operação binária precisa de parênteses"""
+        # Por enquanto, vamos ser conservadores e usar parênteses para operações lógicas
+        return node.op in ['&&', '||', 'and', 'or']
 
     def might_be_string_concatenation(self, node):
         if isinstance(node, Literal) and isinstance(node.value, str):
@@ -115,7 +179,12 @@ class Transpiler:
     def visit_FunctionDeclaration(self, node):
         params = ", ".join(node.params)
         body = self.visit(node.body)
-        return f"def {node.name}({params}):\n" + self._indent(body)
+        
+        # Formatação melhorada para funções
+        function_header = f"def {node.name}({params}):"
+        indented_body = self._indent(body)
+        
+        return f"{function_header}\n{indented_body}"
 
     def visit_ReturnStatement(self, node):
         expr = self.visit(node.expression)
@@ -189,15 +258,20 @@ class Transpiler:
 
     def visit_Comment(self, node):
         if node.is_multiline:
-            # Para comentários multilinha, usamos docstring tripla
             lines = node.text.split('\n')
             if len(lines) == 1:
                 return f"# {node.text}"
             else:
-                # Formatar como comentário multilinha Python
+                # Formatação mais limpa para comentários multilinha
                 formatted_lines = []
+                formatted_lines.append("# " + "-" * 40)
                 for line in lines:
-                    formatted_lines.append(f"# {line.strip()}")
+                    text = line.strip()
+                    if text:
+                        formatted_lines.append(f"# {text}")
+                    else:
+                        formatted_lines.append("#")
+                formatted_lines.append("# " + "-" * 40)
                 return '\n'.join(formatted_lines)
         else:
             return f"# {node.text}"
