@@ -68,6 +68,32 @@ uv sync
 
 #### PASSO 4: Executar o compilador
 
+O projeto agora possui um **script principal unificado** que permite escolher entre transpilação, interpretação ou ambos:
+
+##### **🚀 Script Principal (Recomendado)**
+
+```shell
+# Apenas transpila (padrão)
+python main.py examples/demo_formatacao.js
+
+# Apenas interpreta/executa
+python main.py examples/demo_formatacao.js -i
+
+# Executa ambos (transpila e interpreta)
+python main.py examples/demo_formatacao.js -a
+
+# Transpila e salva em arquivo
+python main.py examples/demo_formatacao.js -t -o saida.py
+
+# Modo verboso com informações detalhadas
+python main.py examples/demo_formatacao.js -a -v
+
+# Ajuda com todas as opções
+python main.py --help
+```
+
+##### **📜 Scripts Individuais (Compatibilidade)**
+
 Para **transpilar** JavaScript para Python:
 
 ```shell
