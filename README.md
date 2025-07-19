@@ -1,79 +1,95 @@
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/Hppw7Zh2)
-# Trabalho Final
 
-## Escopo e organização
+# Trabalho Final - FCTE: Transpilador JS → Python
 
-O trabalho é de tema livre dentro do escopo da disciplina de compiladores e
-consiste no desenvolvimento de alguma aplicação na área da disciplina (um
-interpretador para uma linguagem simples, compilador, analisadores de código,
-etc.)
+## 1. 👥 Contribuidores
 
-O trabalho pode ser feito em grupos de até 4 pessoas.
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><a href="https://github.com/camilascareli"><img style="border-radius: 50%;" src="https://github.com/camilascareli.png" width="100px;" alt=""/><br /><sub><b>221007582</b></sub></a><br /><a href="https://github.com/camilascareli" title="Rocketseat">Camila Careli</a></td>
+      <td align="center"><a href="https://github.com/DanielRogs"><img style="border-radius: 50%;" src="https://github.com/DanielRogs.png" width="100px;" alt=""/><br /><sub><b>211061583</b></sub></a><br /><a href="https://github.com/DanielRogs" title="Rocketseat">Daniel Rodrigues</a></td>
+      <td align="center"><a href="https://github.com/DaviRogs"><img style="border-radius: 50%;" src="https://github.com/DaviRogs.png" width="100px;" alt=""/><br /><sub><b>211061618</b></sub></a><br /><a href="https://github.com/DaviRogs" title="Rocketseat">Davi Rodrigues</a></td>
+      <td align="center"><a href="https://github.com/rodrigoFAmaral"><img style="border-radius: 50%;" src="https://github.com/rodrigoFAmaral.png" width="100px;" alt=""/><br /><sub><b>231011810</b></sub></a><br /><a href="https://github.com/rodrigoFAmaral" title="Rocketseat">Rodrigo Ferreira</a></td>
+    </tr>
+  </table>
+</div>
 
-## Estrutura
+## 2. ℹ️ Sobre o projeto
+Este projeto implementa um transpilador que converte código JavaScript para Python, contemplando análise léxica, análise sintática, geração de AST e geração de código Python. Ele suporta:
+- Estruturas: if/else, while, for...in, for...of
+- Declarações: var, let, const
+- Funções tradicionais e arrow functions
+- Objetos, arrays e métodos
+- Operadores lógicos (&&, ||) e comparativos (>, <, ==, ===, etc.)
 
-Os trabalhos devem ser entregues na atividade própria no [github-classrrom](...).
-Cada repositório deve ter uma estrutura parecida com a delineada abaixo:
+## 3. ▶️ Execução
+### 3.1. Pré-Requisitos:
 
-* **README:** o arquivo README.md na base do repositório deve descrever os
-  detalhes da implementação do código. O README deve ter algumas seções 
-  obrigatórias:
-  - **Título**: nome do projeto
-  - **Integrantes**: lista com os nomes, matrículas e turma de cada integrante.
-  - **Introdução**: deve detalhar o que o projeto implementou, quais foram as
-    estratégias e algoritmos relevantes. Se o projeto implementa uma linguagem
-    não-comum ou um subconjunto de uma linguagem comum, deve conter alguns
-    exemplos de comandos nesta linguagem, descrendo a sua sintaxe e semântica,
-    quando necessário.
-  - **Instalação**: deve detalhar os passos para instalar as dependências e
-    rodar o código do projeto. Pode ser algo simples como *"Rode
-    `uv run lox hello.lox` para executar o interpretador."*, se a linguagem de
-    implementação permitir este tipo de facilidade.
+O compilador atual utiliza a **linguagem Python** para interpretar o JavaScript e convertê-lo ao Python. Por isso, será necessário que você instale-o em sua máquina seguindo as instruções do site oficial da linguagem: [https://www.python.org/downloads/](https://www.python.org/downloads/).
 
-    Você pode usar gerenciadores de pacotes específicos de linguagens populares
-    como uv, npm, cargo, etc, containers Docker/Podman, ou `.nix`.
-  - **Exemplos**: o projeto deve conter uma pasta "exemplos" com alguns arquivos
-    na linguagem de programação implementada. Deve conter exemplos com graus
-    variáveis de complexidade. Algo como: hello world, fibonacci, função
-    recursiva, alguma estrutura de dados e para finalizar um algoritmo um pouco
-    mais elaborado como ordenamento de listas, busca binária, etc.
-    
-    Note que isto é apenas um guia da ordem de dificuldade dos problemas.
-    Algumas linguagens sequer permitem a implementação de alguns dos exemplos
-    acima.
-  - **Referências**: descreva as referências que você utilizou para a
-    implementação da linguagem. Faça uma breve descrição do papel de cada
-    referência ou como ela foi usada no projeto. Caso você tenha usado algum 
-    código existente como referência, descreva as suas contribuições originais
-    para o projeto.
-  - **Estrutura do código**: faça uma descrição da estrutura geral do código
-    discutindo os módulos, classes, estruturas de dados ou funções principais. 
-    Explicite onde as etapas tradicionais de compilação (análise léxica, 
-    sintática, semântica, etc) são realizadas, quando relevante.
-  - **Bugs/Limitações/problemas conhecidos**: discuta as limitações do seu
-    projeto e problemas conhecidos e coisas que poderiam ser feitas para
-    melhorá-lo no futuro. Note: considere apenas melhorias incrementais e não
-    melhorias grandes como: "reimplementar tudo em Rust".
-* **Código:** O codigo fonte deve estar presente no repositório principal junto com
-  a declaração das suas dependências. Cada linguagem possui um mecanismo
-  específico para isso, mas seria algo como o arquivo pyproject.toml em Python
-  ou package.json no caso de Javascript.
+### 3.2 Como executar o compilador:
 
-## Critérios
+#### PASSO 1: Clonar o Repositório
+Para rodar o compilador, é necessário possuir o projeto em sua máquina local. Para isso clone o repositório com o comando:
 
-Cada trabalho começa com 100% e pode receber penalizações ou bônus de acordo com
-os critérios abaixo:
+```shell
+git clone https://github.com/fcte-compiladores/trabalho-final-trab-js2py.git
+```
 
-- Ausência do README: -50%
-- Instruções de instalação não funcionam: até -20%
-- Referências não atribuídas ou falta de referâncias: -10%
-- Código confuso ou mal organizado: até -15%
-- Falta de clareza em apresentar as técnicas e etapas de compilação: -15%
-- Bugs e limitações sérias na implementação: até -25%
-- Escopo reduzido, ou implementação insuficiente: até 25%
-- Uso de código não atribuído/plágio: até -100%
-- Repositório bem estruturado e organizado: até 10%
-- Linguagem com conceitos originais/interessantes: até +15%
-- Testes unitários: até +15%, dependendo da cobertura
+Após isso, entre no diretório do projeto.
 
-Após aplicar todos os bônus, a nota é truncada no intervalo 0-100%. 
+#### PASSO 2: Verificar 3.1
+```shell
+python3 --version
+```
+
+#### PASSO 3: Executar o compilador
+Dentro da pasta do projeto, utilize um dos arquivos já existentes na pasta `examples/` (por exemplo: `example.js`). Comando:
+
+```shell
+python3 main.py examples/example.js
+```
+
+## 4. ⚙️ Exemplos
+O projeto contém uma pasta `examples/` com diversos arquivos JavaScript utilizados para validar as funcionalidades do compilador. Os exemplos abrangem diferentes níveis de complexidade e cobrem vários recursos da linguagem, garantindo a demonstração prática das capacidades do transpilador.  
+
+Entre os arquivos disponíveis, destacam-se:
+- **example.js**: exemplo básico que demonstra operações simples e impressão no console.
+- **test_classes.js / test_advanced_classes.js**: exemplos com definição de classes, métodos e construtores.
+- **test_simple_class.js / test_this.js**: uso do `this` e atributos de instância.
+- **test_method_call.js**: chamadas de métodos de objetos.
+- **test_comments.js**: validação do tratamento de comentários.
+- **test_new.js**: uso do operador `new` para instanciar objetos.
+- **test_encoding.js**: manipulação de strings e codificação.
+- **test_complete.js**: script mais complexo, combinando múltiplas estruturas e funcionalidades.
+
+Esses exemplos demonstram desde casos simples, como **declarações de variáveis e estruturas condicionais**, até cenários mais avançados, incluindo **programação orientada a objetos e manipulação de dados**.
+
+
+## 5. 📂 Estrutura do código
+A organização do projeto segue uma separação clara por responsabilidades, conforme as etapas do processo de compilação (análise léxica, análise sintática, construção da AST e geração de código):
+
+### **Descrição dos módulos principais**
+- **lexer/tokenizer.py** → Faz a **análise léxica**, transformando o código JavaScript em uma lista de tokens.
+- **parser/parser.py** → Executa a **análise sintática**, interpretando os tokens e gerando a AST.
+- **ast_nodes/nodes.py** → Contém as classes que representam nós da AST (como `Program`, `BinaryOp`, `FunctionDeclaration`).
+- **translator/transpiler.py** → Responsável pela **tradução da AST** para código Python equivalente.
+- **examples/** → Exemplos práticos de códigos JavaScript que podem ser compilados.
+- **main.py** → Ponto de entrada do sistema; orquestra todas as etapas: tokenização, parsing e geração de código.
+
+
+## 6. 📝 Limitações atuais e possíveis melhorias
+
+
+## 7. 📌 Referências
+* [Crafting Interpreters, Robert Nystrom, 2015-2021.](https://craftinginterpreters.com/)
+* [Documentação Oficial do Python](https://docs.python.org/3/)
+* [Documentação do JavaScript (MDN Web Docs)](https://developer.mozilla.org/pt-BR/docs/Web/JavaScript)
+* [PEP 8 – Guia de Estilo para Python](https://peps.python.org/pep-0008/)
+* [Introdução à Criação de Compiladores (Dragon Book)](https://en.wikipedia.org/wiki/Compilers:_Principles,_Techniques,_and_Tools)
+* [Regex em Python](https://docs.python.org/3/library/re.html)
+* [Estrutura de um Transpilador (Artigo)](https://dev.to/lydiahallie/javascript-visualized-the-javascript-engine-4cdf)
+
+
+
