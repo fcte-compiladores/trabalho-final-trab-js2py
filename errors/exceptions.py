@@ -20,10 +20,10 @@ class CompilerError(Exception):
             error_msg += f" (posição {self.position})"
         
         if self.context:
-            error_msg += f"\n📍 Contexto: {self.context}"
+            error_msg += f"\nContexto: {self.context}"
         
         if self.suggestion:
-            error_msg += f"\n💡 Sugestão: {self.suggestion}"
+            error_msg += f"\nSugestao: {self.suggestion}"
         
         return error_msg
 
