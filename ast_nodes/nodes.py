@@ -3,9 +3,10 @@ class Program:
         self.statements = statements
 
 class VariableDeclaration:
-    def __init__(self, name, value):
+    def __init__(self, name, value, kind='var'):  
         self.name = name
         self.value = value
+        self.kind = kind
 
 class Literal:
     def __init__(self, value):

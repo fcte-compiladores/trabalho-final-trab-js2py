@@ -38,7 +38,7 @@ class Parser:
             return self.parse_comment()
         elif token.type == 'CLASS':
             return self.parse_class_declaration()
-        elif token.type == 'VAR':
+        elif token.type in ('VAR', 'LET', 'CONST'):
             return self.parse_variable_declaration()
         elif token.type == 'CONSOLE':
             return self.parse_console_log()
@@ -71,7 +71,7 @@ class Parser:
         return Comment(comment_text)
 
     def parse_variable_declaration(self):
-            self.eat('VAR')
+            kind = self.eat(self.current_token().type).value 
             ident = self.eat('IDENTIFIER')
             self.eat('OP_ASSIGN')
 
@@ -88,7 +88,7 @@ class Parser:
                         func = self.parse_arrow_function()
                         if self.current_token() and self.current_token().type == 'SEMICOLON':
                             self.eat('SEMICOLON')
-                        return VariableDeclaration(ident.value, func)
+                        return VariableDeclaration(ident.value, func, kind)
                     else:
                         self.pos = lookahead_pos
                 except:
@@ -96,7 +96,7 @@ class Parser:
 
             value = self.parse_expression()
             self.eat('SEMICOLON')
-            return VariableDeclaration(ident.value, value)
+            return VariableDeclaration(ident.value, value, kind)
 
     def parse_assignment(self):
         ident = self.eat('IDENTIFIER')
@@ -507,3 +507,35 @@ class Parser:
         body = self.parse_block()
         
         return MethodDeclaration(method_name, params, body)
+
+    def parse_expression(self):
+        return self.parse_logical_or()
+
+    def parse_logical_or(self):
+        node = self.parse_logical_and()
+        while self.current_token() and self.current_token().type == 'LOGICAL_OR':
+            op_token = self.eat('LOGICAL_OR')
+            right = self.parse_logical_and()
+            node = BinaryOp(node, op_token.value, right)
+
+        return node
+
+    def parse_logical_and(self):
+        node = self.parse_comparison()
+        while self.current_token() and self.current_token().type == 'LOGICAL_AND':
+            op_token = self.eat('LOGICAL_AND')
+            right = self.parse_comparison()
+            node = BinaryOp(node, op_token.value, right)
+
+        return node
+
+    def parse_comparison(self):
+        node = self.parse_add_sub()
+        while self.current_token() and self.current_token().type in (
+            'GT', 'LT', 'GTE', 'LTE', 'EQ', 'NEQ', 'EQ_STRICT', 'NEQ_STRICT'
+        ):
+            op_token = self.eat(self.current_token().type)
+            right = self.parse_add_sub()
+            node = BinaryOp(node, op_token.value, right)
+
+        return node
