@@ -21,7 +21,13 @@ class Transpiler:
         raise Exception(f"No visit_{node.__class__.__name__} method")
 
     def visit_Program(self, node):
-        return "\n".join([self.visit(s) for s in node.statements])
+        code_lines = [self.visit(s) for s in node.statements]
+        code = "\n".join(code_lines)
+        
+        if 'math.' in code:
+            return f"import math\n\n{code}"
+        else:
+            return code
 
     def visit_VariableDeclaration(self, node):
         if isinstance(node.value, LambdaFunction):
@@ -69,19 +75,16 @@ class Transpiler:
             return f"({left} {py_op} {right})"
 
         if node.op == '+':
-            # Em JavaScript, '+' com qualquer string faz concatenação
-            # Vamos sempre usar str() para garantir concatenação correta
             if self.might_be_string_concatenation(node.left) or self.might_be_string_concatenation(node.right):
                 return f"(str({left}) + str({right}))"
         
         return f"({left} {node.op} {right})"
 
     def might_be_string_concatenation(self, node):
-        # Verifica se um nó pode resultar em string ou concatenação
         if isinstance(node, Literal) and isinstance(node.value, str):
             return True
         if hasattr(node, 'op') and node.op == '+':
-            return True  # Operações + podem ser concatenações
+            return True
         return False
 
 
@@ -148,7 +151,6 @@ class Transpiler:
         return f"lambda {params}: {self.visit(node.expression)}"
 
     def visit_ForStatement(self, node):
-        # Traduz for loop tradicional para while loop em Python
         init_code = ""
         if node.init:
             init_code = self.visit(node.init)
@@ -163,7 +165,6 @@ class Transpiler:
         
         body = self.visit(node.body)
         
-        # Se há update, adiciona ao final do corpo
         if update_code:
             if body.strip():
                 body += f"\n{update_code}"
@@ -242,7 +243,6 @@ class Transpiler:
         obj = self.visit(node.object)
         args = [self.visit(arg) for arg in node.arguments]
         
-        # Conversão de métodos JavaScript para Python
         if node.method_name == 'charAt':
             if len(args) == 1:
                 return f"{obj}[{args[0]}] if 0 <= {args[0]} < len({obj}) else ''"
@@ -268,15 +268,76 @@ class Transpiler:
         elif node.method_name == 'length':
             return f"len({obj})"
         
+        elif node.method_name == 'toLowerCase':
+            return f"{obj}.lower()"
+        
+        elif node.method_name == 'toUpperCase':
+            return f"{obj}.upper()"
+        
         elif node.method_name == 'push':
-            # Para arrays
             args_str = ", ".join(args)
             return f"{obj}.append({args_str})"
         
         elif node.method_name == 'pop':
             return f"{obj}.pop()"
         
+        elif obj == 'Math' and node.method_name == 'floor':
+            return f"math.floor({args[0]})" if args else "math.floor"
+        
+        elif obj == 'Math' and node.method_name == 'ceil':
+            return f"math.ceil({args[0]})" if args else "math.ceil"
+        
+        elif obj == 'Math' and node.method_name == 'round':
+            return f"round({args[0]})" if args else "round"
+        
+        elif obj == 'Math' and node.method_name == 'abs':
+            return f"abs({args[0]})" if args else "abs"
+        
+        elif obj == 'Math' and node.method_name == 'max':
+            args_str = ", ".join(args)
+            return f"max({args_str})"
+        
+        elif obj == 'Math' and node.method_name == 'min':
+            args_str = ", ".join(args)
+            return f"min({args_str})"
+        
+        elif obj == 'Math' and node.method_name == 'pow':
+            return f"pow({args[0]}, {args[1]})" if len(args) >= 2 else "pow"
+        
+        elif obj == 'Math' and node.method_name == 'sqrt':
+            return f"math.sqrt({args[0]})" if args else "math.sqrt"
+        
+        elif node.method_name == 'toFixed':
+            return f"f\"{{{obj}:.{args[0]}f}}\"" if args else f"str({obj})"
+        
+        elif node.method_name == 'toString':
+            return f"str({obj})"
+        
         else:
-            # Método genérico
             args_str = ", ".join(args)
             return f"{obj}.{node.method_name}({args_str})"
+
+    def visit_UnaryOp(self, node):
+        operand = self.visit(node.operand)
+        
+        if node.op == '!':
+            return f"not {operand}"
+        else:
+            return f"{node.op}{operand}"
+
+    def visit_UpdateExpression(self, node):
+        operand = self.visit(node.operand)
+        
+        if hasattr(node.operand, 'property_name') and node.operand.property_name == 'length':
+            array_obj = self.visit(node.operand.object)
+            if node.operator == '--':
+                return f"# Redimensionar array: {array_obj} reduzido em 1 elemento\nif len({array_obj}) > 0: {array_obj}.pop()"
+            elif node.operator == '++':
+                return f"# Expandir array: {array_obj} expandido com None\n{array_obj}.append(None)"
+        
+        if node.operator == '++':
+            return f"{operand} = {operand} + 1"
+        elif node.operator == '--':
+            return f"{operand} = {operand} - 1"
+        else:
+            raise ValueError(f"Operador de update não suportado: {node.operator}")

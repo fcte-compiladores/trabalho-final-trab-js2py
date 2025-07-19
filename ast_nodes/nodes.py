@@ -10,7 +10,7 @@ class VariableDeclaration:
 
 class Assignment:
     def __init__(self, target, value):
-        self.target = target  # Pode ser Identifier ou MemberAccess
+        self.target = target
         self.value = value
 
 class Literal:
@@ -26,6 +26,11 @@ class BinaryOp:
         self.left = left
         self.op = op
         self.right = right
+
+class UnaryOp:
+    def __init__(self, op, operand):
+        self.op = op
+        self.operand = operand
 
 class ConsoleLog:
     def __init__(self, argument):
@@ -134,3 +139,9 @@ class MethodCall:
         self.object = object_
         self.method_name = method_name
         self.arguments = arguments
+
+class UpdateExpression:
+    def __init__(self, operator, operand, prefix=False):
+        self.operator = operator
+        self.operand = operand
+        self.prefix = prefix

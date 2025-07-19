@@ -1,9 +1,30 @@
-from ast_nodes.nodes import Literal, Identifier, MemberAccess
+from ast_nodes.nodes import Literal, Identifier, MemberAccess, PropertyAccess
+import math
 
 class Interpreter:
     def __init__(self, ast):
         self.ast = ast
         self.environment = {}
+        self._setup_builtins()
+    
+    def _setup_builtins(self):
+        """Configura objetos e funções built-in do JavaScript"""
+        math_obj = {
+            'type': 'object',
+            'properties': {
+                'floor': math.floor,
+                'ceil': math.ceil,
+                'round': round,
+                'abs': abs,
+                'max': max,
+                'min': min,
+                'pow': pow,
+                'sqrt': math.sqrt,
+                'PI': math.pi,
+                'E': math.e
+            }
+        }
+        self.environment['Math'] = math_obj
 
     def execute(self):
         return self.visit(self.ast)
@@ -36,6 +57,14 @@ class Interpreter:
                     raise TypeError("'self' só pode ser usado em contexto de instância")
             else:
                 raise NameError("'self' não está definido no contexto atual")
+        elif node.name.startswith('this.'):
+            property_name = node.name[5:]
+            if 'this' in self.environment:
+                this_obj = self.environment['this']
+                this_obj[property_name] = value
+                return value
+            else:
+                raise NameError("'this' não está definido no contexto atual")
         else:
             self.environment[node.name] = value
             return value
@@ -44,15 +73,12 @@ class Interpreter:
         value = self.visit(node.value)
         
         if isinstance(node.target, Identifier):
-            # Atribuição a variável simples
             self.environment[node.target.name] = value
         elif isinstance(node.target, MemberAccess):
-            # Atribuição a elemento de array/objeto
             obj = self.visit(node.target.object)
             key = self.visit(node.target.key)
             
             if isinstance(obj, list):
-                # Array access
                 if isinstance(key, (int, float)):
                     index = int(key)
                     if 0 <= index < len(obj):
@@ -62,10 +88,20 @@ class Interpreter:
                 else:
                     raise TypeError("Índice de array deve ser numérico")
             elif isinstance(obj, dict):
-                # Object access
                 obj[key] = value
             else:
                 raise TypeError("Só é possível atribuir a arrays ou objetos")
+        elif isinstance(node.target, PropertyAccess):
+            obj = self.visit(node.target.object)
+            property_name = node.target.property_name
+            
+            if isinstance(obj, dict):
+                if obj.get('type') == 'instance':
+                    obj['properties'][property_name] = value
+                else:
+                    obj[property_name] = value
+            else:
+                raise TypeError("Só é possível atribuir propriedades a objetos")
         else:
             raise SyntaxError("Target de atribuição inválido")
         
@@ -88,27 +124,27 @@ class Interpreter:
             if right_val == 0:
                 return float('inf') if left_val > 0 else float('-inf') if left_val < 0 else float('nan')
             return left_val / right_val
+        elif node.op == '%':
+            if right_val == 0:
+                return float('nan')
+            return left_val % right_val
         elif node.op in ('==', '==='):
             return left_val == right_val
         elif node.op in ('!=', '!=='):
             return left_val != right_val
         elif node.op == '>':
-            # Tratar None como undefined em JavaScript
             if left_val is None or right_val is None:
                 return False
             return left_val > right_val
         elif node.op == '<':
-            # Tratar None como undefined em JavaScript
             if left_val is None or right_val is None:
                 return False
             return left_val < right_val
         elif node.op == '>=':
-            # Tratar None como undefined em JavaScript
             if left_val is None or right_val is None:
                 return False
             return left_val >= right_val
         elif node.op == '<=':
-            # Tratar None como undefined em JavaScript
             if left_val is None or right_val is None:
                 return False
             return left_val <= right_val
@@ -203,8 +239,6 @@ class Interpreter:
         args = [self.visit(arg) for arg in node.arguments]
         
         old_env = self.environment
-        # Usar o environment atual em vez do environment salvo na função
-        # para permitir recursão e acesso a outras funções
         self.environment = self.environment.copy()
         
         for i, param in enumerate(func['params']):
@@ -280,7 +314,6 @@ class Interpreter:
                     self.environment[key] = old_env[key]
 
     def visit_ForStatement(self, node):
-        # Salva apenas a variável de controle do loop, se ela existir
         loop_var_name = None
         loop_var_old_value = None
         
@@ -290,32 +323,25 @@ class Interpreter:
                 loop_var_old_value = self.environment[loop_var_name]
         
         try:
-            # Executa a inicialização
+
             if node.init:
                 self.visit(node.init)
-            
-            # Loop principal
+
             while True:
-                # Verifica a condição
                 if node.condition:
                     condition_result = self.visit(node.condition)
                     if not condition_result:
                         break
-                
-                # Executa o corpo do loop
+
                 self.visit(node.body)
-                
-                # Executa o update/incremento
+
                 if node.update:
                     self.visit(node.update)
         finally:
-            # Restaura ou remove apenas a variável de controle do loop
             if loop_var_name:
                 if loop_var_old_value is not None:
-                    # Restaura o valor antigo se a variável existia antes
                     self.environment[loop_var_name] = loop_var_old_value
                 else:
-                    # Remove a variável se ela não existia antes
                     if loop_var_name in self.environment:
                         del self.environment[loop_var_name]
 
@@ -335,30 +361,64 @@ class Interpreter:
 
     def visit_NewExpression(self, node):
         if node.class_name not in self.environment:
-            raise NameError(f"Classe '{node.class_name}' não foi definida.")
+            raise NameError(f"Construtor '{node.class_name}' não foi definido.")
         
-        class_def = self.environment[node.class_name]
-        if class_def.get('type') != 'class':
-            raise TypeError(f"'{node.class_name}' não é uma classe.")
+        constructor = self.environment[node.class_name]
         
-        instance = {
-            'type': 'instance',
-            'class': node.class_name,
-            'properties': {}
-        }
+        if isinstance(constructor, dict) and constructor.get('type') == 'class':
+            instance = {
+                'type': 'instance',
+                'class': node.class_name,
+                'properties': {}
+            }
+            
+            if constructor['constructor']:
+                args = [self.visit(arg) for arg in node.arguments]
+                
+                old_env = self.environment
+                self.environment = self.environment.copy()
+                self.environment['this'] = instance
+                
+                for i, param in enumerate(constructor['constructor'].params):
+                    if i < len(args):
+                        self.environment[param] = args[i]
+                    else:
+                        self.environment[param] = None
+                
+                try:
+                    self.visit(constructor['constructor'].body)
+                except ReturnException:
+                    pass
+                finally:
+                    self.environment = old_env
+            
+            return instance
         
-        if class_def['constructor']:
+        elif isinstance(constructor, dict) and constructor.get('type') == 'function':
+            instance = {}
             args = [self.visit(arg) for arg in node.arguments]
             
             old_env = self.environment
             self.environment = self.environment.copy()
             self.environment['this'] = instance
             
-            for i, param in enumerate(class_def['constructor'].params):
+            for i, param in enumerate(constructor['params']):
                 if i < len(args):
                     self.environment[param] = args[i]
                 else:
                     self.environment[param] = None
+            
+            try:
+                self.visit(constructor['body'])
+            except ReturnException:
+                pass
+            finally:
+                self.environment = old_env
+            
+            return instance
+        
+        else:
+            raise TypeError(f"'{node.class_name}' não é um construtor válido.")
             
             try:
                 self.visit(class_def['constructor'].body)
@@ -374,33 +434,72 @@ class Interpreter:
 
     def visit_PropertyAccess(self, node):
         obj = self.visit(node.object)
-        
-        # Suporte para propriedades de arrays
+
         if isinstance(obj, list) and node.property_name == 'length':
             return len(obj)
-        
-        # Suporte para propriedades de strings
+
         if isinstance(obj, str) and node.property_name == 'length':
             return len(obj)
-        
-        # Suporte para instâncias de classes
-        if isinstance(obj, dict) and obj.get('type') == 'instance':
-            return obj['properties'].get(node.property_name, None)
+
+        if isinstance(obj, dict):
+            if obj.get('type') == 'instance':
+                return obj['properties'].get(node.property_name, None)
+            else:
+                return obj.get(node.property_name, None)
         
         raise TypeError(f"Propriedade '{node.property_name}' não encontrada para tipo {type(obj)}")
 
     def visit_MethodCall(self, node):
         obj = self.visit(node.object)
         
-        # Suporte para métodos de string
         if isinstance(obj, str):
             return self.handle_string_method(obj, node.method_name, node.arguments)
-        
-        # Suporte para métodos de array/lista
+
         if isinstance(obj, list):
             return self.handle_array_method(obj, node.method_name, node.arguments)
         
-        # Métodos de instâncias de classe
+        if isinstance(obj, (int, float)):
+            return self.handle_number_method(obj, node.method_name, node.arguments)
+        
+        if isinstance(obj, dict) and obj.get('type') == 'function' and node.method_name == 'call':
+            args = [self.visit(arg) for arg in node.arguments]
+            if len(args) == 0:
+                raise TypeError("call() requer pelo menos um argumento (this)")
+
+            new_this = args[0]
+            function_args = args[1:]
+            
+            old_env = self.environment
+            self.environment = self.environment.copy()
+            self.environment['this'] = new_this
+            
+            for i, param in enumerate(obj['params']):
+                if i < len(function_args):
+                    self.environment[param] = function_args[i]
+                else:
+                    self.environment[param] = None
+            
+            try:
+                self.visit(obj['body'])
+                result = None
+            except ReturnException as e:
+                result = e.value
+            finally:
+                self.environment = old_env
+            
+            return result
+
+        if isinstance(obj, dict) and obj.get('type') == 'object':
+            if node.method_name in obj['properties']:
+                method = obj['properties'][node.method_name]
+                if callable(method):
+                    args = [self.visit(arg) for arg in node.arguments]
+                    return method(*args)
+                else:
+                    return method
+            else:
+                raise AttributeError(f"Método '{node.method_name}' não encontrado no objeto")
+        
         if not isinstance(obj, dict) or obj.get('type') != 'instance':
             raise TypeError("Chamada de método só é válida em instâncias")
         
@@ -473,6 +572,12 @@ class Interpreter:
         elif method_name == 'length':
             return len(string_obj)
         
+        elif method_name == 'toLowerCase':
+            return string_obj.lower()
+        
+        elif method_name == 'toUpperCase':
+            return string_obj.upper()
+        
         else:
             raise AttributeError(f"Método '{method_name}' não encontrado para string")
 
@@ -492,6 +597,94 @@ class Interpreter:
         
         else:
             raise AttributeError(f"Método '{method_name}' não encontrado para array")
+
+    def handle_number_method(self, number_obj, method_name, arguments):
+        args = [self.visit(arg) for arg in arguments]
+        
+        if method_name == 'toFixed':
+            if len(args) != 1:
+                raise TypeError("toFixed() requer exatamente 1 argumento")
+            digits = int(args[0])
+            return f"{number_obj:.{digits}f}"
+        
+        elif method_name == 'toString':
+            return str(number_obj)
+        
+        else:
+            raise AttributeError(f"Método '{method_name}' não encontrado para número")
+
+    def visit_UnaryOp(self, node):
+        operand = self.visit(node.operand)
+        
+        if node.op == '!':
+            if operand is None or operand is False or operand == 0 or operand == "" or operand != operand:
+                return True
+            else:
+                return False
+        elif node.op == '-':
+            return -operand
+        elif node.op == '+':
+            return +operand
+        else:
+            raise ValueError(f"Operador unário não suportado: {node.op}")
+
+    def visit_UpdateExpression(self, node):
+        if isinstance(node.operand, Identifier):
+            current_value = self.environment.get(node.operand.name, 0)
+            
+            if node.operator == '++':
+                new_value = current_value + 1
+            elif node.operator == '--':
+                new_value = current_value - 1
+            else:
+                raise ValueError(f"Operador de update não suportado: {node.operator}")
+            
+            self.environment[node.operand.name] = new_value
+
+            return new_value if node.prefix else current_value
+            
+        else:
+            from ast_nodes.nodes import PropertyAccess
+            if isinstance(node.operand, PropertyAccess):
+                obj = self.visit(node.operand.object)
+                prop_name = node.operand.property_name
+
+                if isinstance(obj, list) and prop_name == 'length':
+                    current_length = len(obj)
+                    
+                    if node.operator == '--':
+                        new_length = current_length - 1
+                        if new_length >= 0:
+                            while len(obj) > new_length:
+                                obj.pop()
+                        return new_length if node.prefix else current_length
+                    elif node.operator == '++':
+                        new_length = current_length + 1
+                        obj.append(None)
+                        return new_length if node.prefix else current_length
+                
+                if isinstance(obj, dict):
+                    current_value = obj.get(prop_name, 0)
+                elif isinstance(obj, list) and prop_name == 'length':
+                    current_value = len(obj)
+                else:
+                    current_value = getattr(obj, prop_name, 0)
+                
+                if node.operator == '++':
+                    new_value = current_value + 1
+                elif node.operator == '--':
+                    new_value = current_value - 1
+                else:
+                    raise ValueError(f"Operador de update não suportado: {node.operator}")
+                
+                if isinstance(obj, dict):
+                    obj[prop_name] = new_value
+                else:
+                    setattr(obj, prop_name, new_value)
+                
+                return new_value if node.prefix else current_value
+            else:
+                raise TypeError(f"Update expression não suportado para {type(node.operand)}")
 
 class ReturnException(Exception):
     """Exceção usada para implementar return statements"""
