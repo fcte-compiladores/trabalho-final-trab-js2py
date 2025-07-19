@@ -1,4 +1,4 @@
-from ast_nodes.nodes import Literal
+from ast_nodes.nodes import Literal, Identifier, MemberAccess
 
 class Interpreter:
     def __init__(self, ast):
@@ -40,6 +40,37 @@ class Interpreter:
             self.environment[node.name] = value
             return value
 
+    def visit_Assignment(self, node):
+        value = self.visit(node.value)
+        
+        if isinstance(node.target, Identifier):
+            # Atribuição a variável simples
+            self.environment[node.target.name] = value
+        elif isinstance(node.target, MemberAccess):
+            # Atribuição a elemento de array/objeto
+            obj = self.visit(node.target.object)
+            key = self.visit(node.target.key)
+            
+            if isinstance(obj, list):
+                # Array access
+                if isinstance(key, (int, float)):
+                    index = int(key)
+                    if 0 <= index < len(obj):
+                        obj[index] = value
+                    else:
+                        raise IndexError(f"Índice {index} fora dos limites do array")
+                else:
+                    raise TypeError("Índice de array deve ser numérico")
+            elif isinstance(obj, dict):
+                # Object access
+                obj[key] = value
+            else:
+                raise TypeError("Só é possível atribuir a arrays ou objetos")
+        else:
+            raise SyntaxError("Target de atribuição inválido")
+        
+        return value
+
     def visit_BinaryOp(self, node):
         left_val = self.visit(node.left)
         right_val = self.visit(node.right)
@@ -62,12 +93,24 @@ class Interpreter:
         elif node.op in ('!=', '!=='):
             return left_val != right_val
         elif node.op == '>':
+            # Tratar None como undefined em JavaScript
+            if left_val is None or right_val is None:
+                return False
             return left_val > right_val
         elif node.op == '<':
+            # Tratar None como undefined em JavaScript
+            if left_val is None or right_val is None:
+                return False
             return left_val < right_val
         elif node.op == '>=':
+            # Tratar None como undefined em JavaScript
+            if left_val is None or right_val is None:
+                return False
             return left_val >= right_val
         elif node.op == '<=':
+            # Tratar None como undefined em JavaScript
+            if left_val is None or right_val is None:
+                return False
             return left_val <= right_val
         elif node.op == '&&':
             return left_val and right_val
@@ -91,24 +134,6 @@ class Interpreter:
             return operand - 1
         
         raise Exception(f"Operador unário desconhecido: {node.op}")
-
-    def visit_Assignment(self, node):
-        value = self.visit(node.value)
-        
-        if hasattr(node.target, 'object') and hasattr(node.target, 'property'):
-            obj = self.visit(node.target.object)
-            if isinstance(obj, dict) and obj.get('type') == 'instance':
-                obj['properties'][node.target.property] = value
-                return value
-            else:
-                raise TypeError("Atribuição a propriedade só é válida em instâncias")
-        
-
-        elif hasattr(node, 'target') and hasattr(node.target, 'name'):
-            self.environment[node.target.name] = value
-            return value
-        
-        raise Exception(f"Tipo de atribuição não suportado: {type(node.target)}")
 
     def visit_AssignmentExpression(self, node):
         return self.visit_Assignment(node)
@@ -178,7 +203,9 @@ class Interpreter:
         args = [self.visit(arg) for arg in node.arguments]
         
         old_env = self.environment
-        self.environment = func['environment'].copy()
+        # Usar o environment atual em vez do environment salvo na função
+        # para permitir recursão e acesso a outras funções
+        self.environment = self.environment.copy()
         
         for i, param in enumerate(func['params']):
             if i < len(args):
@@ -252,6 +279,46 @@ class Interpreter:
                 if key in self.environment:
                     self.environment[key] = old_env[key]
 
+    def visit_ForStatement(self, node):
+        # Salva apenas a variável de controle do loop, se ela existir
+        loop_var_name = None
+        loop_var_old_value = None
+        
+        if node.init and hasattr(node.init, 'name'):
+            loop_var_name = node.init.name
+            if loop_var_name in self.environment:
+                loop_var_old_value = self.environment[loop_var_name]
+        
+        try:
+            # Executa a inicialização
+            if node.init:
+                self.visit(node.init)
+            
+            # Loop principal
+            while True:
+                # Verifica a condição
+                if node.condition:
+                    condition_result = self.visit(node.condition)
+                    if not condition_result:
+                        break
+                
+                # Executa o corpo do loop
+                self.visit(node.body)
+                
+                # Executa o update/incremento
+                if node.update:
+                    self.visit(node.update)
+        finally:
+            # Restaura ou remove apenas a variável de controle do loop
+            if loop_var_name:
+                if loop_var_old_value is not None:
+                    # Restaura o valor antigo se a variável existia antes
+                    self.environment[loop_var_name] = loop_var_old_value
+                else:
+                    # Remove a variável se ela não existia antes
+                    if loop_var_name in self.environment:
+                        del self.environment[loop_var_name]
+
     def visit_ClassDeclaration(self, node):
         self.environment[node.name] = {
             'type': 'class',
@@ -307,12 +374,33 @@ class Interpreter:
 
     def visit_PropertyAccess(self, node):
         obj = self.visit(node.object)
-        if not isinstance(obj, dict) or obj.get('type') != 'instance':
-            raise TypeError("Acesso a propriedade só é válido em instâncias")
-        return obj['properties'].get(node.property_name, None)
+        
+        # Suporte para propriedades de arrays
+        if isinstance(obj, list) and node.property_name == 'length':
+            return len(obj)
+        
+        # Suporte para propriedades de strings
+        if isinstance(obj, str) and node.property_name == 'length':
+            return len(obj)
+        
+        # Suporte para instâncias de classes
+        if isinstance(obj, dict) and obj.get('type') == 'instance':
+            return obj['properties'].get(node.property_name, None)
+        
+        raise TypeError(f"Propriedade '{node.property_name}' não encontrada para tipo {type(obj)}")
 
     def visit_MethodCall(self, node):
         obj = self.visit(node.object)
+        
+        # Suporte para métodos de string
+        if isinstance(obj, str):
+            return self.handle_string_method(obj, node.method_name, node.arguments)
+        
+        # Suporte para métodos de array/lista
+        if isinstance(obj, list):
+            return self.handle_array_method(obj, node.method_name, node.arguments)
+        
+        # Métodos de instâncias de classe
         if not isinstance(obj, dict) or obj.get('type') != 'instance':
             raise TypeError("Chamada de método só é válida em instâncias")
         
@@ -337,7 +425,7 @@ class Interpreter:
                 self.environment[param] = args[i]
             else:
                 self.environment[param] = None
-        
+
         try:
             self.visit(method.body)
             result = None
@@ -345,8 +433,65 @@ class Interpreter:
             result = e.value
         finally:
             self.environment = old_env
-        
+
         return result
+
+    def handle_string_method(self, string_obj, method_name, arguments):
+        args = [self.visit(arg) for arg in arguments]
+        
+        if method_name == 'charAt':
+            if len(args) != 1:
+                raise TypeError("charAt() requer exatamente 1 argumento")
+            index = args[0]
+            if not isinstance(index, (int, float)):
+                raise TypeError("charAt() requer um índice numérico")
+            index = int(index)
+            return string_obj[index] if 0 <= index < len(string_obj) else ""
+        
+        elif method_name == 'substr':
+            if len(args) == 1:
+                start = int(args[0])
+                return string_obj[start:] if start >= 0 else ""
+            elif len(args) == 2:
+                start = int(args[0])
+                length = int(args[1])
+                return string_obj[start:start+length] if start >= 0 else ""
+            else:
+                raise TypeError("substr() requer 1 ou 2 argumentos")
+        
+        elif method_name == 'substring':
+            if len(args) == 1:
+                start = int(args[0])
+                return string_obj[start:]
+            elif len(args) == 2:
+                start = int(args[0])
+                end = int(args[1])
+                return string_obj[start:end]
+            else:
+                raise TypeError("substring() requer 1 ou 2 argumentos")
+        
+        elif method_name == 'length':
+            return len(string_obj)
+        
+        else:
+            raise AttributeError(f"Método '{method_name}' não encontrado para string")
+
+    def handle_array_method(self, array_obj, method_name, arguments):
+        args = [self.visit(arg) for arg in arguments]
+        
+        if method_name == 'push':
+            for arg in args:
+                array_obj.append(arg)
+            return len(array_obj)
+        
+        elif method_name == 'pop':
+            return array_obj.pop() if array_obj else None
+        
+        elif method_name == 'length':
+            return len(array_obj)
+        
+        else:
+            raise AttributeError(f"Método '{method_name}' não encontrado para array")
 
 class ReturnException(Exception):
     """Exceção usada para implementar return statements"""

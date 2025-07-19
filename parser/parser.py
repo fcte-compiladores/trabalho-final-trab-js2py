@@ -1,10 +1,10 @@
 from lexer.tokenizer import tokenize
 from ast_nodes.nodes import (
-    Program, VariableDeclaration, Literal, Identifier,
+    Program, VariableDeclaration, Assignment, Literal, Identifier,
     BinaryOp, ConsoleLog, IfStatement, WhileStatement,
     Block, FunctionDeclaration, ReturnStatement, FunctionCall, 
     ArrayLiteral, ObjectLiteral, MemberAccess, LambdaFunction,
-    ForEachStatement, Comment, ClassDeclaration, ConstructorDeclaration,
+    ForEachStatement, ForStatement, Comment, ClassDeclaration, ConstructorDeclaration,
     MethodDeclaration, NewExpression, ThisExpression, PropertyAccess, MethodCall
 )
 
@@ -58,10 +58,12 @@ class Parser:
                 return self.parse_function_call_statement()
             elif next_token and next_token.type == 'DOT':
                 return self.parse_object_method_or_assignment()
+            elif next_token and next_token.type == 'LBRACKET':
+                return self.parse_array_assignment()
             else:
                 return self.parse_assignment()
         elif token.type == 'FOR':
-            return self.parse_for_each()
+            return self.parse_for_statement()
         else:
             raise SyntaxError(f"Token inesperado: {token}")
 
@@ -71,8 +73,11 @@ class Parser:
         return Comment(comment_text)
 
     def parse_variable_declaration(self):
-            kind = self.eat(self.current_token().type).value 
-            ident = self.eat('IDENTIFIER')
+        kind = self.eat(self.current_token().type).value 
+        ident = self.eat('IDENTIFIER')
+        
+        # Verifica se há inicialização
+        if self.current_token() and self.current_token().type == 'OP_ASSIGN':
             self.eat('OP_ASSIGN')
 
             if self.current_token().type == 'LPAREN':
@@ -95,8 +100,31 @@ class Parser:
                     self.pos = lookahead_pos
 
             value = self.parse_expression()
+        else:
+            # Sem inicialização, assume undefined/null
+            value = Literal(None)
+        
+        self.eat('SEMICOLON')
+        return VariableDeclaration(ident.value, value, kind)
+
+    def parse_array_assignment(self):
+        # Parse arr[index] = value
+        array_name = self.eat('IDENTIFIER').value
+        self.eat('LBRACKET')
+        index = self.parse_expression()
+        self.eat('RBRACKET')
+        
+        token = self.current_token()
+        if token.type == 'OP_ASSIGN':
+            self.eat('OP_ASSIGN')
+            value = self.parse_expression()
             self.eat('SEMICOLON')
-            return VariableDeclaration(ident.value, value, kind)
+            
+            # Criar um nó MemberAccess como target
+            target = MemberAccess(Identifier(array_name), index)
+            return Assignment(target, value)
+        else:
+            raise SyntaxError(f"Esperado '=' após acesso a array, encontrado {token}")
 
     def parse_assignment(self):
         ident = self.eat('IDENTIFIER')
@@ -279,12 +307,116 @@ class Parser:
             expr = self.parse_expression()
             return LambdaFunction(params, expr)
 
-    def parse_for_each(self):
+    def parse_for_statement(self):
         self.eat('FOR')
         self.eat('LPAREN')
+        
+        # Fazer lookahead para determinar o tipo de loop for
+        saved_pos = self.pos
+        try:
+            # Tenta parse de um for tradicional
+            if self.current_token().type in ('VAR', 'LET', 'CONST'):
+                decl_type = self.current_token().type
+                self.eat(decl_type)
+                var_name = self.eat('IDENTIFIER').value
+                
+                # Verifica se é um for...in ou for...of
+                if self.current_token().type in ('IN', 'OF'):
+                    # É um for...in ou for...of
+                    self.pos = saved_pos
+                    return self.parse_for_each()
+                else:
+                    # É um for tradicional
+                    self.pos = saved_pos
+                    return self.parse_traditional_for()
+            else:
+                # Se não começa com declaração, assume for tradicional
+                self.pos = saved_pos
+                return self.parse_traditional_for()
+        except:
+            # Em caso de erro, volta para posição salva e tenta for tradicional
+            self.pos = saved_pos
+            return self.parse_traditional_for()
 
-        if self.current_token().type == 'VAR':
-            self.eat('VAR')
+    def parse_traditional_for(self):
+        # O FOR e LPAREN já foram consumidos pelo parse_for_statement
+        
+        # Inicialização (pode ser declaração de variável ou expressão)
+        init = None
+        if self.current_token().type in ('VAR', 'LET', 'CONST'):
+            init = self.parse_variable_declaration_no_semicolon()
+        elif self.current_token().type != 'SEMICOLON':
+            init = self.parse_expression()
+        self.eat('SEMICOLON')
+        
+        # Condição
+        condition = None
+        if self.current_token().type != 'SEMICOLON':
+            condition = self.parse_expression()
+        self.eat('SEMICOLON')
+        
+        # Update/incremento
+        update = None
+        if self.current_token().type != 'RPAREN':
+            update = self.parse_update_expression()
+        self.eat('RPAREN')
+        
+        # Corpo do loop
+        body = self.parse_block()
+        
+        return ForStatement(init, condition, update, body)
+
+    def parse_update_expression(self):
+        # Para expressões de update em loops for, que podem ser i++, i--, i += 1, etc.
+        if self.current_token().type == 'IDENTIFIER':
+            next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
+            if next_token and next_token.type in ('OP_INCREMENT', 'OP_DECREMENT', 'OP_PLUSEQ', 'OP_MINUSEQ', 'OP_ASSIGN'):
+                ident = self.eat('IDENTIFIER')
+                token = self.current_token()
+
+                if token.type == 'OP_INCREMENT':
+                    self.eat('OP_INCREMENT')
+                    expr = BinaryOp(Identifier(ident.value), '+', Literal(1))
+                    return VariableDeclaration(ident.value, expr)
+
+                elif token.type == 'OP_DECREMENT':
+                    self.eat('OP_DECREMENT')
+                    expr = BinaryOp(Identifier(ident.value), '-', Literal(1))
+                    return VariableDeclaration(ident.value, expr)
+
+                elif token.type in ('OP_PLUSEQ', 'OP_MINUSEQ'):
+                    op_token = self.eat(token.type)
+                    value = self.parse_expression()
+                    op = op_token.value[0]
+                    expr = BinaryOp(Identifier(ident.value), op, value)
+                    return VariableDeclaration(ident.value, expr)
+
+                elif token.type == 'OP_ASSIGN':
+                    self.eat('OP_ASSIGN')
+                    value = self.parse_expression()
+                    return VariableDeclaration(ident.value, value)
+        
+        # Se não é uma expressão de update simples, parse como expressão normal
+        return self.parse_expression()
+
+    def parse_variable_declaration_no_semicolon(self):
+        kind = self.eat(self.current_token().type).value 
+        ident = self.eat('IDENTIFIER')
+        
+        # Verifica se há inicialização
+        if self.current_token() and self.current_token().type == 'OP_ASSIGN':
+            self.eat('OP_ASSIGN')
+            value = self.parse_expression()
+        else:
+            # Sem inicialização, assume undefined/null
+            value = Literal(None)
+        
+        return VariableDeclaration(ident.value, value, kind)
+    def parse_for_each(self):
+        # O FOR e LPAREN já foram consumidos pelo parse_for_statement
+
+        if self.current_token().type in ('VAR', 'LET', 'CONST'):
+            self.eat(self.current_token().type)
         var_name = self.eat('IDENTIFIER').value
 
         kind_token = self.current_token()
@@ -346,7 +478,7 @@ class Parser:
             node = Identifier(token.value)
             self.eat('IDENTIFIER')
 
-            while self.current_token() and self.current_token().type in ('DOT', 'LBRACKET'):
+            while self.current_token() and self.current_token().type in ('DOT', 'LBRACKET', 'LPAREN'):
                 if self.current_token().type == 'DOT':
                     self.eat('DOT')
                     property_name = self.eat('IDENTIFIER').value
@@ -369,6 +501,23 @@ class Parser:
                     index = self.parse_expression()
                     self.eat('RBRACKET')
                     node = MemberAccess(node, index)
+                
+                elif self.current_token().type == 'LPAREN':
+                    # Chamada de função direta
+                    self.eat('LPAREN')
+                    args = []
+                    if self.current_token() and self.current_token().type != 'RPAREN':
+                        args.append(self.parse_expression())
+                        while self.current_token() and self.current_token().type == 'COMMA':
+                            self.eat('COMMA')
+                            args.append(self.parse_expression())
+                    self.eat('RPAREN')
+                    # Converter Identifier para FunctionCall
+                    if isinstance(node, Identifier):
+                        node = FunctionCall(node.name, args)
+                    else:
+                        # Se não é um Identifier simples, tratamos como MethodCall
+                        node = MethodCall(node, None, args)
             return node
         elif token.type == 'LPAREN':
             self.eat('LPAREN')

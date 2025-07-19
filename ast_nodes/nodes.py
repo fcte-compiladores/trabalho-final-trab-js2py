@@ -8,6 +8,11 @@ class VariableDeclaration:
         self.value = value
         self.kind = kind
 
+class Assignment:
+    def __init__(self, target, value):
+        self.target = target  # Pode ser Identifier ou MemberAccess
+        self.value = value
+
 class Literal:
     def __init__(self, value):
         self.value = value
@@ -81,6 +86,13 @@ class ForEachStatement:
         self.iterable = iterable
         self.body = body
         self.kind = kind
+
+class ForStatement:
+    def __init__(self, init, condition, update, body):
+        self.init = init
+        self.condition = condition
+        self.update = update
+        self.body = body
 
 class Comment:
     def __init__(self, text):

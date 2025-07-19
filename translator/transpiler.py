@@ -35,6 +35,10 @@ class Transpiler:
         else:
             return f"{node.name} = {self.visit(node.value)}"
 
+    def visit_Assignment(self, node):
+        target = self.visit(node.target)
+        value = self.visit(node.value)
+        return f"{target} = {value}"
 
     def visit_Literal(self, node):
         if isinstance(node.value, str):
@@ -65,13 +69,20 @@ class Transpiler:
             return f"({left} {py_op} {right})"
 
         if node.op == '+':
-            is_left_string = isinstance(node.left, Literal) and isinstance(node.left.value, str)
-            is_right_string = isinstance(node.right, Literal) and isinstance(node.right.value, str)
-            
-            if is_left_string or is_right_string:
+            # Em JavaScript, '+' com qualquer string faz concatenação
+            # Vamos sempre usar str() para garantir concatenação correta
+            if self.might_be_string_concatenation(node.left) or self.might_be_string_concatenation(node.right):
                 return f"(str({left}) + str({right}))"
         
         return f"({left} {node.op} {right})"
+
+    def might_be_string_concatenation(self, node):
+        # Verifica se um nó pode resultar em string ou concatenação
+        if isinstance(node, Literal) and isinstance(node.value, str):
+            return True
+        if hasattr(node, 'op') and node.op == '+':
+            return True  # Operações + podem ser concatenações
+        return False
 
 
     def is_string(self, node):
@@ -136,6 +147,37 @@ class Transpiler:
         params = ', '.join(node.params)
         return f"lambda {params}: {self.visit(node.expression)}"
 
+    def visit_ForStatement(self, node):
+        # Traduz for loop tradicional para while loop em Python
+        init_code = ""
+        if node.init:
+            init_code = self.visit(node.init)
+        
+        condition = "True"
+        if node.condition:
+            condition = self.visit(node.condition)
+        
+        update_code = ""
+        if node.update:
+            update_code = self.visit(node.update)
+        
+        body = self.visit(node.body)
+        
+        # Se há update, adiciona ao final do corpo
+        if update_code:
+            if body.strip():
+                body += f"\n{update_code}"
+            else:
+                body = update_code
+        
+        result = ""
+        if init_code:
+            result += f"{init_code}\n"
+        
+        result += f"while {condition}:\n{self._indent(body)}"
+        
+        return result
+
     def visit_ForEachStatement(self, node):
         iterable = self.visit(node.iterable)
         body = self.visit(node.body)
@@ -177,7 +219,7 @@ class Transpiler:
         params = ['self'] + node.params
         params_str = ', '.join(params)
         body = self.visit(node.body)
-        
+
         if not body.strip():
             body = "pass"
         
@@ -192,9 +234,49 @@ class Transpiler:
 
     def visit_PropertyAccess(self, node):
         obj = self.visit(node.object)
+        if node.property_name == 'length':
+            return f"len({obj})"
         return f"{obj}.{node.property_name}"
 
     def visit_MethodCall(self, node):
         obj = self.visit(node.object)
-        args = ", ".join([self.visit(arg) for arg in node.arguments])
-        return f"{obj}.{node.method_name}({args})"
+        args = [self.visit(arg) for arg in node.arguments]
+        
+        # Conversão de métodos JavaScript para Python
+        if node.method_name == 'charAt':
+            if len(args) == 1:
+                return f"{obj}[{args[0]}] if 0 <= {args[0]} < len({obj}) else ''"
+            else:
+                raise TypeError("charAt() requer exatamente 1 argumento")
+        
+        elif node.method_name == 'substr':
+            if len(args) == 1:
+                return f"{obj}[{args[0]}:]"
+            elif len(args) == 2:
+                return f"{obj}[{args[0]}:{args[0]}+{args[1]}]"
+            else:
+                raise TypeError("substr() requer 1 ou 2 argumentos")
+        
+        elif node.method_name == 'substring':
+            if len(args) == 1:
+                return f"{obj}[{args[0]}:]"
+            elif len(args) == 2:
+                return f"{obj}[{args[0]}:{args[1]}]"
+            else:
+                raise TypeError("substring() requer 1 ou 2 argumentos")
+        
+        elif node.method_name == 'length':
+            return f"len({obj})"
+        
+        elif node.method_name == 'push':
+            # Para arrays
+            args_str = ", ".join(args)
+            return f"{obj}.append({args_str})"
+        
+        elif node.method_name == 'pop':
+            return f"{obj}.pop()"
+        
+        else:
+            # Método genérico
+            args_str = ", ".join(args)
+            return f"{obj}.{node.method_name}({args_str})"
