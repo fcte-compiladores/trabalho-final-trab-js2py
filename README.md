@@ -142,14 +142,6 @@ O projeto inclui um **script principal unificado** que combina transpilação e 
 - **`-o, --output FILE`**: Salva código transpilado em arquivo
 - **`-v, --verbose`**: Modo detalhado com informações de debug
 
-### **Vantagens:**
-
-- Interface única e consistente
-- Validação integrada de argumentos
-- Saída formatada e profissional
-- Tratamento robusto de erros
-- Compatibilidade com scripts individuais
-
 ---
 
 ## **📁 Fluxo de Arquivos no Projeto**
@@ -208,7 +200,7 @@ uv sync
 
 #### PASSO 4: Executar o compilador
 
-O projeto agora possui um **script principal unificado** que permite escolher entre transpilação, interpretação ou ambos:
+O projeto possui um **script principal unificado** que permite escolher entre transpilação, interpretação ou ambos:
 
 ##### **🚀 Script Principal (Recomendado)**
 
@@ -241,20 +233,6 @@ python main.py examples/helloWord.js -i
 python main.py examples/helloWord.js -a
 python main.py examples/helloWord.js -t -o saida.py
 python main.py examples/helloWord.js -a -v
-```
-
-##### **📜 Scripts Individuais (Compatibilidade)**
-
-Para **transpilar** JavaScript para Python:
-
-```shell
-uv run main.py examples/helloWord.js
-```
-
-Para **interpretar** JavaScript diretamente:
-
-```shell
-uv run main.py examples/helloWord.js -i
 ```
 
 #### PASSO 5: Executar Testes (Opcional)
@@ -388,6 +366,32 @@ Entre os arquivos disponíveis, destacam-se:
   uv run main.py examples/sorting.js -a
   ```
 
+- **test_errors.js**: arquivo com erros propositais para testar o sistema de detecção e mensagens de erro.
+
+  ```bash
+  # Transpilação (demonstra tratamento de erros):
+  uv run main.py examples/test_errors.js
+
+  # Interpretação (demonstra tratamento de erros):
+  uv run main.py examples/test_errors.js -i
+
+  # Modo verboso para ver detalhes dos erros:
+  uv run main.py examples/test_errors.js -v
+  ```
+
+- **test_parser_error.js**: exemplo específico para testar erros de análise sintática (parser).
+
+  ```bash
+  # Transpilação (demonstra erro de parser):
+  uv run main.py examples/test_parser_error.js
+
+  # Interpretação (demonstra erro de parser):
+  uv run main.py examples/test_parser_error.js -i
+
+  # Modo verboso para análise detalhada do erro:
+  uv run main.py examples/test_parser_error.js -v
+  ```
+
 Esses exemplos demonstram desde casos simples, como **declarações de variáveis e estruturas condicionais**, até cenários mais avançados, incluindo **algoritmos, recursão e manipulação de estruturas de dados**.
 
 ## 5. 📂 Estrutura do código
@@ -396,17 +400,21 @@ A organização do projeto segue uma separação clara por responsabilidades, co
 
 ### **Descrição dos módulos principais**
 
-- **main.py** → **Script principal unificado** que permite escolher entre transpilação, interpretação ou ambos com interface de linha de comando completa.
-- **lexer/tokenizer.py** → Faz a **análise léxica**, transformando o código JavaScript em uma lista de tokens com suporte a comentários.
-- **parser/parser.py** → Executa a **análise sintática**, interpretando os tokens e gerando a AST com tratamento robusto de erros.
-- **ast_nodes/nodes.py** → Contém as classes que representam nós da AST (como `Program`, `BinaryOp`, `FunctionDeclaration`, `Comment`).
-- **translator/transpiler.py** → Responsável pela **tradução da AST** para código Python equivalente com formatação inteligente.
-- **interpreter/interpreter.py** → Executa a **interpretação direta** do código JavaScript com ambiente de execução completo.
-- **errors/exceptions.py** → Sistema de **tratamento de erros** com mensagens detalhadas e sugestões de correção.
-- **examples/** → Exemplos práticos de códigos JavaScript que podem ser compilados e interpretados.
-- **tests/** → Testes automatizados usando pytest para validação do sistema.
-- **mainTr.py** → Ponto de entrada para **transpilação**: converte JavaScript para Python (compatibilidade).
-- **mainIn.py** → Ponto de entrada para **interpretação**: executa JavaScript diretamente (compatibilidade).
+- **main.py** → **Script principal unificado** com interface de linha de comando completa. Permite escolher entre transpilação, interpretação ou ambos, com opções avançadas como saída para arquivo e modo verboso.
+
+### **Pipeline de Processamento**
+- **lexer/tokenizer.py** → Faz a **análise léxica**, transformando o código JavaScript em uma lista de tokens com suporte completo a comentários e detecção de erros léxicos.
+- **parser/parser.py** → Executa a **análise sintática**, interpretando os tokens e gerando a AST com tratamento robusto de erros e mensagens informativas.
+- **ast_nodes/nodes.py** → Contém as classes que representam nós da AST (como `Program`, `BinaryOp`, `FunctionDeclaration`, `Comment`, `ClassDeclaration`).
+
+### **Processamento de Saída**
+- **translator/transpiler.py** → Responsável pela **tradução da AST** para código Python equivalente com formatação inteligente e preservação de comentários.
+- **interpreter/interpreter.py** → Executa a **interpretação direta** do código JavaScript com ambiente de execução completo e gerenciamento de escopo.
+
+### **Sistema de Suporte**
+- **errors/exceptions.py** → Sistema de **tratamento de erros** com mensagens detalhadas, sugestões de correção e localização precisa.
+- **examples/** → Exemplos práticos de códigos JavaScript, incluindo casos de teste para erros e validação do sistema.
+- **tests/** → Testes automatizados usando pytest para validação completa do sistema, incluindo testes de unidade e integração.
 
 ### **Arquivos de configuração**
 
@@ -414,20 +422,33 @@ A organização do projeto segue uma separação clara por responsabilidades, co
 - **uv.lock** → Lock file para garantir reprodutibilidade das dependências.
 - **.gitignore** → Arquivos e diretórios ignorados pelo Git.
 
-## 6. 📝 Limitações atuais e possíveis melhorias
+## 6. 📝 Limitações atuais
 
-### **🔄 Limitações Conhecidas**
+#### **Linguagem JavaScript:**
+- **Escopo de variáveis**: Implementação simplificada do escopo `let` e `const`, não reproduz completamente o comportamento de block scoping
+- **Hoisting**: Não implementa completamente o comportamento de hoisting de variáveis e funções do JavaScript
+- **Closures**: Suporte limitado para closures complexos e captura de variáveis do escopo externo
+- **Protótipos**: Sistema de herança baseado em protótipos não implementado (usa apenas funções construtoras)
+- **APIs do navegador**: Não suporta APIs específicas do navegador (DOM, fetch, localStorage, etc.)
+- **Módulos**: Sistema de import/export ES6 não implementado
+- **Async/Await**: Programação assíncrona (Promise, async/await) não suportada
 
-- **Escopo de variáveis**: Implementação simplificada do escopo `let` e `const`
-- **Hoisting**: Não implementa completamente o comportamento de hoisting do JavaScript
-- **Closures**: Suporte limitado para closures complexos
-- **Protótipos**: Sistema de herança baseado em protótipos não implementado
-- **APIs do navegador**: Não suporta APIs específicas do navegador (DOM, fetch, etc.)
-- **Módulos**: Sistema de import/export não implementado
-- **Async/Await**: Programação assíncrona não suportada
+#### **Estruturas de Dados:**
+- **Map/Set**: Estruturas de dados Map e Set não implementadas
+- **WeakMap/WeakSet**: Referências fracas não suportadas
+- **Símbolos**: Tipo de dado Symbol não implementado
+- **Proxy**: Interceptação de operações em objetos não suportada
 
-### **🚀 Melhorias Futuras**
+#### **Funcionalidades Avançadas:**
+- **Generators**: Funções generator (function*) não implementadas
+- **Destructuring**: Desestruturação de objetos e arrays não suportada
+- **Template literals**: Template strings com expressões não suportadas
+- **Spread operator**: Operador spread (...) não implementado
+- **Default parameters**: Parâmetros com valores padrão não suportados
 
+#### **Tratamento de Erros:**
+- **try/catch/finally**: Blocos de tratamento de exceções não implementados
+- **throw**: Lançamento de exceções customizadas não suportado
 
 ## 7. 📌 Referências
 
