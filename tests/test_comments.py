@@ -25,8 +25,8 @@ def test_multiline_comments():
     """Testa comentários multilinha"""
     code = """
     /*
-       Comentário multilinha
-       com várias linhas
+        Comentário multilinha
+        com várias linhas
     */
     let y = 10;
     """
@@ -78,10 +78,8 @@ def test_comment_interpretation():
     console.log(x); // Inline comment
     """
     parser = Parser(code)
-    ast = parser.parse_program()
-    
+    ast = parser.parse_program() 
     interpreter = Interpreter(ast)
-    # Deveria executar sem erro
     interpreter.execute()
 
 if __name__ == "__main__":
