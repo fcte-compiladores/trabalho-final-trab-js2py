@@ -1,10 +1,11 @@
 from lexer.tokenizer import tokenize
+from errors.exceptions import ParserError
 from ast_nodes.nodes import (
     Program, VariableDeclaration, Assignment, Literal, Identifier,
     BinaryOp, UnaryOp, ConsoleLog, IfStatement, WhileStatement,
     Block, FunctionDeclaration, ReturnStatement, FunctionCall, 
     ArrayLiteral, ObjectLiteral, MemberAccess, LambdaFunction,
-    ForEachStatement, ForStatement, Comment, ClassDeclaration, ConstructorDeclaration,
+    ForEachStatement, ForStatement, Comment, InlineComment, ClassDeclaration, ConstructorDeclaration,
     MethodDeclaration, NewExpression, ThisExpression, PropertyAccess, MethodCall, UpdateExpression
 )
 
@@ -24,7 +25,19 @@ class Parser:
             self.pos += 1
             return token
         else:
-            raise SyntaxError(f"Esperado {token_type}, encontrado {token}")
+            # Informações contextuais mais detalhadas
+            context = f"Tentando processar token na posição {self.pos}"
+            if token:
+                context += f". Token atual: {token.type} = '{token.value}'"
+            else:
+                context += ". Fim do arquivo inesperado"
+            
+            raise ParserError(
+                expected=token_type,
+                found=token.type if token else "EOF",
+                position=self.pos,
+                context=context
+            )
 
     def parse_program(self):
         statements = []
@@ -36,12 +49,16 @@ class Parser:
         token = self.current_token()
         if token.type == 'COMMENT':
             return self.parse_comment()
+        elif token.type == 'MULTILINE_COMMENT':
+            return self.parse_multiline_comment()
         elif token.type == 'CLASS':
             return self.parse_class_declaration()
         elif token.type in ('VAR', 'LET', 'CONST'):
-            return self.parse_variable_declaration()
+            stmt = self.parse_variable_declaration()
+            return self.check_for_inline_comment(stmt)
         elif token.type == 'CONSOLE':
-            return self.parse_console_log()
+            stmt = self.parse_console_log()
+            return self.check_for_inline_comment(stmt)
         elif token.type == 'IF':
             return self.parse_if_statement()
         elif token.type == 'WHILE':
@@ -49,28 +66,58 @@ class Parser:
         elif token.type == 'FUNCTION':
             return self.parse_function_declaration()
         elif token.type == 'RETURN':
-            return self.parse_return_statement()
+            stmt = self.parse_return_statement()
+            return self.check_for_inline_comment(stmt)
         elif token.type == 'THIS':
-            return self.parse_this_assignment()
+            stmt = self.parse_this_assignment()
+            return self.check_for_inline_comment(stmt)
         elif token.type == 'IDENTIFIER':
             next_token = self.tokens[self.pos + 1] if self.pos + 1 < len(self.tokens) else None
             if next_token and next_token.type == 'LPAREN':
-                return self.parse_function_call_statement()
+                stmt = self.parse_function_call_statement()
+                return self.check_for_inline_comment(stmt)
             elif next_token and next_token.type == 'DOT':
-                return self.parse_object_method_or_assignment()
+                stmt = self.parse_object_method_or_assignment()
+                return self.check_for_inline_comment(stmt)
             elif next_token and next_token.type == 'LBRACKET':
-                return self.parse_array_assignment()
+                stmt = self.parse_array_assignment()
+                return self.check_for_inline_comment(stmt)
             else:
-                return self.parse_assignment()
+                stmt = self.parse_assignment()
+                return self.check_for_inline_comment(stmt)
         elif token.type == 'FOR':
             return self.parse_for_statement()
         else:
-            raise SyntaxError(f"Token inesperado: {token}")
+            # Melhor descrição de tokens inesperados
+            available_tokens = ['VAR', 'LET', 'CONST', 'FUNCTION', 'IF', 'WHILE', 'FOR', 'RETURN', 'CLASS']
+            context = f"Token '{token.type}' não é válido no início de uma declaração"
+            context += f". Tokens válidos: {', '.join(available_tokens)}"
+            
+            raise ParserError(
+                expected="declaração válida",
+                found=token.type,
+                position=self.pos,
+                context=context
+            )
 
     def parse_comment(self):
         token = self.eat('COMMENT')
         comment_text = token.value[2:].strip()
-        return Comment(comment_text)
+        return Comment(comment_text, is_multiline=False)
+
+    def parse_multiline_comment(self):
+        token = self.eat('MULTILINE_COMMENT')
+        # Remove /* e */ e strip whitespace
+        comment_text = token.value[2:-2].strip()
+        return Comment(comment_text, is_multiline=True)
+
+    def check_for_inline_comment(self, statement):
+        """Verifica se há um comentário inline após o statement"""
+        if self.current_token() and self.current_token().type == 'COMMENT':
+            comment_token = self.eat('COMMENT')
+            comment_text = comment_token.value[2:].strip()
+            return InlineComment(statement, comment_text)
+        return statement
 
     def parse_variable_declaration(self):
         kind = self.eat(self.current_token().type).value 

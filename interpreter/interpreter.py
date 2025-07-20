@@ -1,5 +1,6 @@
 from ast_nodes.nodes import Literal, Identifier, MemberAccess, PropertyAccess
 import math
+from errors.exceptions import InterpreterError
 
 class Interpreter:
     def __init__(self, ast):
@@ -35,7 +36,15 @@ class Interpreter:
         return visitor(node)
 
     def generic_visit(self, node):
-        raise Exception(f"O interpretador não sabe como visitar um nó do tipo {node.__class__.__name__}")
+        node_type = node.__class__.__name__
+        context = f"O interpretador não sabe como executar um nó do tipo '{node_type}'"
+        context += f". Estado atual das variáveis: {list(self.environment.keys())}"
+        
+        raise InterpreterError(
+            f"Nó '{node_type}' não implementado",
+            context=context,
+            variable_state=self.environment
+        )
 
     # --- Métodos de Visita para Execução ---
 
@@ -210,7 +219,12 @@ class Interpreter:
             self.visit(statement)
 
     def visit_Comment(self, node):
+        # Comentários são ignorados durante a interpretação
         pass
+
+    def visit_InlineComment(self, node):
+        # Executa apenas o statement, ignora o comentário
+        return self.visit(node.statement)
 
     def visit_WhileStatement(self, node):
         while self.visit(node.condition):

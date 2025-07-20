@@ -100,8 +100,14 @@ class ForStatement:
         self.body = body
 
 class Comment:
-    def __init__(self, text):
+    def __init__(self, text, is_multiline=False):
         self.text = text
+        self.is_multiline = is_multiline
+
+class InlineComment:
+    def __init__(self, statement, comment_text):
+        self.statement = statement
+        self.comment_text = comment_text
 
 class ClassDeclaration:
     def __init__(self, name, constructor=None, methods=None):
