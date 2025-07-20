@@ -80,24 +80,30 @@ Código JS → [Tokenizer] → [Parser] → [AST] → [Transpiler] → Código P
 
 - Recebe o código JavaScript como string
 - Divide o código em **tokens** (palavras-chave, operadores, literais, identificadores)
-- Remove comentários e espaços desnecessários
+- **Preserva comentários** (inline e multilinha) como tokens especiais
+- Remove espaços desnecessários mantendo formatação relevante
+- **Detecta erros léxicos** com localização precisa
 - Gera uma lista estruturada de tokens
 
 ### **2. Análise Sintática (`parser/parser.py`)**
 
 - Consome os tokens gerados pelo tokenizer
 - Aplica as regras gramaticais do JavaScript
+- **Processa comentários** e os integra na AST apropriadamente
 - Constrói a **Árvore Sintática Abstrata (AST)** usando classes em `ast_nodes/nodes.py`
-- Valida a sintaxe e detecta erros estruturais
+- **Detecta erros sintáticos** com mensagens detalhadas e sugestões
+- Valida a estrutura e semântica básica do código
 
 ### **3. Geração de Código (`translator/transpiler.py`)**
 
 - Percorre a AST gerada pelo parser
 - Traduz cada nó da árvore para o equivalente em Python
+- **Preserva comentários** na saída Python com formatação adequada
+- **Formatação inteligente** com indentação e espaçamento corretos
 - Gera código Python idiomático e executável
 - **Saída:** Código Python pronto para execução
 
-**Comando:** `uv run python mainTr.py arquivo.js`
+**Comando:** `uv run main.py arquivo.js`
 
 ---
 
@@ -120,7 +126,29 @@ Código JS → [Tokenizer] → [Parser] → [AST] → [Interpreter] → Execuç�
 - Produz saída imediatamente durante a execução
 - **Saída:** Resultado da execução do código JavaScript
 
-**Comando:** `uv run python mainIn.py arquivo.js`
+**Comando:** `uv run main.py arquivo.js -i`
+
+---
+
+## **🎯 Sistema Unificado (main.py)**
+
+O projeto inclui um **script principal unificado** que combina transpilação e interpretação em uma única interface:
+
+### **Modos de Operação:**
+
+- **`-t, --transpile`**: Apenas transpila (padrão)
+- **`-i, --interpret`**: Apenas interpreta/executa
+- **`-a, --all`**: Executa ambos (transpila + interpreta)
+- **`-o, --output FILE`**: Salva código transpilado em arquivo
+- **`-v, --verbose`**: Modo detalhado com informações de debug
+
+### **Vantagens:**
+
+- Interface única e consistente
+- Validação integrada de argumentos
+- Saída formatada e profissional
+- Tratamento robusto de erros
+- Compatibilidade com scripts individuais
 
 ---
 
@@ -186,22 +214,33 @@ O projeto agora possui um **script principal unificado** que permite escolher en
 
 ```shell
 # Apenas transpila (padrão)
-python main.py examples/demo_formatacao.js
+uv run main.py examples/helloWord.js
 
 # Apenas interpreta/executa
-python main.py examples/demo_formatacao.js -i
+uv run main.py examples/helloWord.js -i
 
 # Executa ambos (transpila e interpreta)
-python main.py examples/demo_formatacao.js -a
+uv run main.py examples/helloWord.js -a
 
 # Transpila e salva em arquivo
-python main.py examples/demo_formatacao.js -t -o saida.py
+uv run main.py examples/helloWord.js -t -o saida.py
 
 # Modo verboso com informações detalhadas
-python main.py examples/demo_formatacao.js -a -v
+uv run main.py examples/helloWord.js -a -v
 
 # Ajuda com todas as opções
-python main.py --help
+uv run main.py --help
+```
+
+**Alternativa sem uv (Python diretamente):**
+
+```shell
+# Mesmos comandos substituindo 'uv run' por 'python'
+python main.py examples/helloWord.js
+python main.py examples/helloWord.js -i
+python main.py examples/helloWord.js -a
+python main.py examples/helloWord.js -t -o saida.py
+python main.py examples/helloWord.js -a -v
 ```
 
 ##### **📜 Scripts Individuais (Compatibilidade)**
@@ -209,13 +248,13 @@ python main.py --help
 Para **transpilar** JavaScript para Python:
 
 ```shell
-uv run mainTr.py examples/helloWord.js
+uv run main.py examples/helloWord.js
 ```
 
 Para **interpretar** JavaScript diretamente:
 
 ```shell
-uv run mainIn.py examples/helloWord.js
+uv run main.py examples/helloWord.js -i
 ```
 
 #### PASSO 5: Executar Testes (Opcional)
@@ -236,90 +275,117 @@ Entre os arquivos disponíveis, destacam-se:
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/helloWord.js
+  uv run main.py examples/helloWord.js
 
   # Interpretação:
-  uv run mainIn.py examples/helloWord.js
+  uv run main.py examples/helloWord.js -i
+
+  # Ambos (transpila e executa):
+  uv run main.py examples/helloWord.js -a
   ```
 
 - **classes_e_objetos.js**: implementação de classes usando funções construtoras, métodos e manipulação de objetos.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/classes_e_objetos.js
+  uv run main.py examples/classes_e_objetos.js
 
   # Interpretação:
-  uv run mainIn.py examples/classes_e_objetos.js
+  uv run main.py examples/classes_e_objetos.js -i
+
+  # Ambos (transpila e executa):
+  uv run main.py examples/classes_e_objetos.js -a
   ```
 
 - **estrutura_de_controle.js**: demonstra estruturas condicionais (if/else) e loops (while, for) com exemplos práticos.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/estrutura_de_controle.js
+  uv run main.py examples/estrutura_de_controle.js
 
   # Interpretação:
-  uv run mainIn.py examples/estrutura_de_controle.js
+  uv run main.py examples/estrutura_de_controle.js -i
+
+  # Ambos com informações detalhadas:
+  uv run main.py examples/estrutura_de_controle.js -a -v
   ```
 
 - **estrutura_de_dados.js**: trabalha com arrays, objetos e manipulação de diferentes tipos de dados.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/estrutura_de_dados.js
+  uv run main.py examples/estrutura_de_dados.js
 
   # Interpretação:
-  uv run mainIn.py examples/estrutura_de_dados.js
+  uv run main.py examples/estrutura_de_dados.js -i
+
+  # Salvar código transpilado em arquivo:
+  uv run main.py examples/estrutura_de_dados.js -o dados.py
   ```
 
 - **fibonacci.js**: implementação do algoritmo de Fibonacci, demonstrando recursão e loops.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/fibonacci.js
+  uv run main.py examples/fibonacci.js
 
   # Interpretação:
-  uv run mainIn.py examples/fibonacci.js
+  uv run main.py examples/fibonacci.js -i
+
+  # Ambos (transpila e executa):
+  uv run main.py examples/fibonacci.js -a
   ```
 
 - **busca_binaria.js**: algoritmo de busca binária para demonstrar estruturas de controle avançadas.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/busca_binaria.js
+  uv run main.py examples/busca_binaria.js
 
   # Interpretação:
-  uv run mainIn.py examples/busca_binaria.js
+  uv run main.py examples/busca_binaria.js -i
+
+  # Ambos com modo verboso:
+  uv run main.py examples/busca_binaria.js -a -v
   ```
 
 - **recursao.js**: exemplos diversos de funções recursivas e casos base.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/recursao.js
+  uv run main.py examples/recursao.js
 
   # Interpretação:
-  uv run mainIn.py examples/recursao.js
+  uv run main.py examples/recursao.js -i
+
+  # Ambos (transpila e executa):
+  uv run main.py examples/recursao.js -a
   ```
 
 - **manipulacao_de_string.js**: operações com strings, concatenação e métodos de texto.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/manipulacao_de_string.js
+  uv run main.py examples/manipulacao_de_string.js
 
   # Interpretação:
-  uv run mainIn.py examples/manipulacao_de_string.js
+  uv run main.py examples/manipulacao_de_string.js -i
+
+  # Salvar transpilação em arquivo:
+  uv run main.py examples/manipulacao_de_string.js -o strings.py
   ```
 
 - **sorting.js**: algoritmos de ordenação como bubble sort e quick sort.
 
   ```bash
   # Transpilação:
-  uv run mainTr.py examples/sorting.js
+  uv run main.py examples/sorting.js
 
   # Interpretação:
-  uv run mainIn.py examples/sorting.js
+  uv run main.py examples/sorting.js -i
+
+  # Ambos (transpila e executa):
+  uv run main.py examples/sorting.js -a
   ```
 
 Esses exemplos demonstram desde casos simples, como **declarações de variáveis e estruturas condicionais**, até cenários mais avançados, incluindo **algoritmos, recursão e manipulação de estruturas de dados**.
@@ -330,15 +396,17 @@ A organização do projeto segue uma separação clara por responsabilidades, co
 
 ### **Descrição dos módulos principais**
 
-- **lexer/tokenizer.py** → Faz a **análise léxica**, transformando o código JavaScript em uma lista de tokens.
-- **parser/parser.py** → Executa a **análise sintática**, interpretando os tokens e gerando a AST.
-- **ast_nodes/nodes.py** → Contém as classes que representam nós da AST (como `Program`, `BinaryOp`, `FunctionDeclaration`).
-- **translator/transpiler.py** → Responsável pela **tradução da AST** para código Python equivalente.
-- **interpreter/interpreter.py** → Executa a **interpretação direta** do código JavaScript.
+- **main.py** → **Script principal unificado** que permite escolher entre transpilação, interpretação ou ambos com interface de linha de comando completa.
+- **lexer/tokenizer.py** → Faz a **análise léxica**, transformando o código JavaScript em uma lista de tokens com suporte a comentários.
+- **parser/parser.py** → Executa a **análise sintática**, interpretando os tokens e gerando a AST com tratamento robusto de erros.
+- **ast_nodes/nodes.py** → Contém as classes que representam nós da AST (como `Program`, `BinaryOp`, `FunctionDeclaration`, `Comment`).
+- **translator/transpiler.py** → Responsável pela **tradução da AST** para código Python equivalente com formatação inteligente.
+- **interpreter/interpreter.py** → Executa a **interpretação direta** do código JavaScript com ambiente de execução completo.
+- **errors/exceptions.py** → Sistema de **tratamento de erros** com mensagens detalhadas e sugestões de correção.
 - **examples/** → Exemplos práticos de códigos JavaScript que podem ser compilados e interpretados.
 - **tests/** → Testes automatizados usando pytest para validação do sistema.
-- **mainTr.py** → Ponto de entrada para **transpilação**: converte JavaScript para Python.
-- **mainIn.py** → Ponto de entrada para **interpretação**: executa JavaScript diretamente.
+- **mainTr.py** → Ponto de entrada para **transpilação**: converte JavaScript para Python (compatibilidade).
+- **mainIn.py** → Ponto de entrada para **interpretação**: executa JavaScript diretamente (compatibilidade).
 
 ### **Arquivos de configuração**
 
@@ -347,6 +415,34 @@ A organização do projeto segue uma separação clara por responsabilidades, co
 - **.gitignore** → Arquivos e diretórios ignorados pelo Git.
 
 ## 6. 📝 Limitações atuais e possíveis melhorias
+
+### **🔄 Limitações Conhecidas**
+
+- **Escopo de variáveis**: Implementação simplificada do escopo `let` e `const`
+- **Hoisting**: Não implementa completamente o comportamento de hoisting do JavaScript
+- **Closures**: Suporte limitado para closures complexos
+- **Protótipos**: Sistema de herança baseado em protótipos não implementado
+- **APIs do navegador**: Não suporta APIs específicas do navegador (DOM, fetch, etc.)
+- **Módulos**: Sistema de import/export não implementado
+- **Async/Await**: Programação assíncrona não suportada
+
+### **🚀 Melhorias Futuras**
+
+- **Melhor suporte a ES6+**: Destructuring, template literals, spread operator
+- **Sistema de módulos**: Suporte a import/export
+- **Melhor tratamento de tipos**: Verificação de tipos mais robusta
+- **Otimizações**: Otimização do código Python gerado
+- **Mais estruturas de dados**: Set, Map, WeakMap, etc.
+- **Debugging**: Sistema de debugging integrado
+- **Plugins**: Arquitetura de plugins para extensibilidade
+
+### **✅ Melhorias Já Implementadas**
+
+- **Sistema completo de comentários**: Suporte a comentários inline e multilinha
+- **Interface unificada**: Script principal com argumentos de linha de comando
+- **Tratamento robusto de erros**: Mensagens detalhadas com sugestões
+- **Formatação inteligente**: Código Python bem formatado e legível
+- **Testes abrangentes**: Cobertura de testes para principais funcionalidades
 
 ## 7. 📌 Referências
 
