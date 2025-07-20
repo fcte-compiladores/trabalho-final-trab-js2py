@@ -140,7 +140,6 @@ class Transpiler:
 
         if node.op == '+':
             # Em JavaScript, '+' com qualquer string faz concatenação
-            # Vamos sempre usar str() para garantir concatenação correta
             if self.might_be_string_concatenation(node.left) or self.might_be_string_concatenation(node.right):
                 return f"str({left}) + str({right})"
         
