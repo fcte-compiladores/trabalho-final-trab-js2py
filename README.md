@@ -428,21 +428,6 @@ A organização do projeto segue uma separação clara por responsabilidades, co
 
 ### **🚀 Melhorias Futuras**
 
-- **Melhor suporte a ES6+**: Destructuring, template literals, spread operator
-- **Sistema de módulos**: Suporte a import/export
-- **Melhor tratamento de tipos**: Verificação de tipos mais robusta
-- **Otimizações**: Otimização do código Python gerado
-- **Mais estruturas de dados**: Set, Map, WeakMap, etc.
-- **Debugging**: Sistema de debugging integrado
-- **Plugins**: Arquitetura de plugins para extensibilidade
-
-### **✅ Melhorias Já Implementadas**
-
-- **Sistema completo de comentários**: Suporte a comentários inline e multilinha
-- **Interface unificada**: Script principal com argumentos de linha de comando
-- **Tratamento robusto de erros**: Mensagens detalhadas com sugestões
-- **Formatação inteligente**: Código Python bem formatado e legível
-- **Testes abrangentes**: Cobertura de testes para principais funcionalidades
 
 ## 7. 📌 Referências
 
